@@ -1,243 +1,205 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Modal } from './components/Modal';
 import toast, { Toaster } from 'react-hot-toast';
-import axios from 'axios';
-import cloudBackGround from './assets/cloudBackGround.mp4';
-import uvIcon from './assets/uv.png';
-import feelsLikeIcon from './assets/feelslike.png';
-import humidityIcon from './assets/humidity.png';
-import windIcon from './assets/wind.png';
-import pressureIcon from './assets/pressure.png';
-import visIcon from './assets/vis.png';
-
+import { Quantum } from 'ldrs/react';
+import { fetchWeather, clearWeather } from './store/weatherSlice';
+import { InputForm } from './components/InputForm';
+import { toggleTheme } from './store/themeSlice';
+import MovingCircles from './components/MovingCircles';
+import { ReactSVG } from 'react-svg';
+import theme_toggle from './icons/theme_toggle.svg';
+import wind from './icons/wind.svg';
+import humidity from './icons/humidity.svg';
+import uv from './icons/uv.svg';
+import vis from './icons/vis.svg';
+import pressure from './icons/pressure.svg';
+import { ForecastCards } from './components/ForecastCards';
+import { AstroCard } from './components/AstroCard';
 import './App.css';
 
-import 'ldrs/lineSpinner';
-
 function App() {
-  const [weather, setWeather] = useState(null);
-  const [city, setCity] = useState(() => {
-    const city = localStorage.getItem('city');
-    return city ?? null;
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { weatherData, city, loading, error } = useSelector(
+    (state) => state.weather
+  );
+  const isDark = useSelector((state) => state.theme.isDark);
 
   useEffect(() => {
-    if (city) fetchData(city);
-  }, [city]);
-
-  //Функция для запроса и получения информации о погоде
-  async function fetchData(query) {
-    setIsLoading(true);
-    try {
-      console.log('Запрос к API с query:', query);
-      const response = await axios.get(
-        `http://api.weatherapi.com/v1/forecast.json?key=${
-          import.meta.env.VITE_WEATHER_API_KEY
-        }&q=${query}&days=5&aqi=no&alerts=no&lang=ru`
-      );
-      console.log('Ответ от API:', response.data);
-      const {
-        location: { name, country },
-        current: {
-          condition: { text, icon },
-          temp_c,
-          uv,
-          feelslike_c,
-          humidity,
-          wind_kph,
-          pressure_mb,
-          vis_km,
-        },
-        forecast: { forecastday },
-      } = response.data;
-      setWeather({
-        name, //название города
-        country, //название страны
-        text, //словесное описание погоды
-        icon, //иконка погоды
-        temp_c, //температура град. Цельсия
-        uv, //УФ
-        feelslike_c, // погода по ощущению в град Цельсия
-        humidity, //влажность %
-        wind_kph, //скорость ветра км/ч
-        pressure_mb, //давление в гПа
-        vis_km, //видимость в км
-        forecastday, //прогнозы на последующие дни
-      });
-      localStorage.setItem('city', query);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Ошибка:', error); // Логируем ошибку для анализа
-      toast.error('Ошибка при попытке загрузки погоды');
-      setIsLoading(false);
-      localStorage.clear();
-      setWeather(null);
-      setCity(null);
+    if (!weatherData) {
+      document.documentElement.classList.add('modal-active');
+    } else {
+      document.documentElement.classList.remove('modal-active');
     }
-  }
+  }, [weatherData]);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-    const query = formData.get('query').trim().toLowerCase();
-    if (query.length === 0) {
-      toast.error('Пожалуйста, введите город');
-      return;
+  useEffect(() => {
+    if (city) {
+      dispatch(fetchWeather(city));
     }
-    await fetchData(query);
-    form.reset();
-  }
+  }, [city, dispatch]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearWeather());
+    }
+  }, [error, dispatch]);
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   function WidgetCart({ icon, text, value, unit }) {
     return (
-      <div className="border rounded-2xl p-2.5">
-        <img className="w-10" src={icon} />
-        <p>{text}</p>
-        <h3>{`${value} ${unit}`}</h3>
+      <div className="Card h-[100px] w-[180px] rounded-[10px] pt-2.5 px-7 pb-5 grid grid-cols-2 grid-rows-3 bg-linear-to-b from-lightFrom to-lightTo">
+        <p className="col-span-2 text-center text-sm">{text}</p>
+        <ReactSVG
+          className="row-span-2 self-center justify-items-center  theme-icon-path"
+          src={icon}
+        />
+        <h3 className="text-2xl">{value}</h3>
+        <h3 className="text-sm">{unit}</h3>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center max-w-[600px] mx-auto my-16 rounded-2xl bg-white/60 shadow-lg font-[Roboto]">
-      <video
-        autoPlay
-        muted
-        loop
-        className="fixed top-0 left-0 w-full h-full object-cover -z-1 brightness-50"
-      >
-        <source src={cloudBackGround} type="video/mp4" />
-        Ваш браузер не поддерживает видео
-      </video>
-      <div>
-        <h1 className="text-center text-6xl m-5 mt-12">Погода</h1>
-        <p className="text-center text-3xl m-5 mb-10">
-          {new Date()
-            .toLocaleString('ru-Ru', { weekday: 'short' })
-            .toUpperCase()}{' '}
-          {new Date().getDate()}{' '}
-          {new Date().toLocaleString('ru-Ru', { month: 'short' }).toUpperCase()}
-          , {new Date().getFullYear()}
-        </p>
-      </div>
-      <form
-        onSubmit={handleSubmit}
-        className=" grid grid-cols-1 grid-rows-3 text-2xl gap-2.5 mb-12"
-      >
-        <span className="text-center self-center">Поиск по городу</span>
-        <input
-          className="bg-white p-2.5 w-[550px] rounded-lg"
-          type="text"
-          name="query"
-          placeholder="Введите название город"
-        ></input>
-        <button
-          type="submit"
-          className="bg-blue-400/60 p-2.5 w-[550px] rounded-lg hover:cursor-pointer "
-        >
-          Узнать погоду
-        </button>
-      </form>
+    <>
+      {!weatherData ? (
+        <Modal />
+      ) : (
+        <>
+          <div className="max-w-[980px] mx-auto pt-[15px] font-[Roboto]">
+            <header className="flex justify-between items-center mb-15 ">
+              <h1 className=" text-4xl content-baseline font-normal">
+                Weather
+              </h1>
+              <InputForm />
+              <div
+                className="w-8 h-8 flex items-center justify-center border rounded-full border-white/30 bg-white/30 cursor-pointer "
+                onClick={() => dispatch(toggleTheme())}
+              >
+                <ReactSVG className="theme-icon-path" src={theme_toggle} />
+              </div>
+            </header>
+            {loading ? (
+              <div className="flex justify-center mt-[40vh] mb-[50vh] ">
+                <Quantum size="90" speed="1.75" color="grey" />
+              </div>
+            ) : (
+              <div className="flex flex-col relative">
+                <div>
+                  <MovingCircles />
+                  <div className="justify-items-end text-xl mb-[180px] ">
+                    <p>
+                      {weatherData.name}, {weatherData.country}
+                    </p>
+                    <p>
+                      {(() => {
+                        const weekday = new Date().toLocaleString('ru-RU', {
+                          weekday: 'long',
+                        });
+                        return (
+                          weekday.charAt(0).toUpperCase() + weekday.slice(1)
+                        );
+                      })()}
+                    </p>
+                    <p className="text-4xl font-black">
+                      {new Date().getDate()}.
+                      {new Date().toLocaleString('ru-Ru', { month: '2-digit' })}
+                    </p>
+                  </div>
+                  <div className="z-10 grid gap-x-10 gap-y-2 grid-cols-[250px_400px] mb-[50px]">
+                    <p className="text-9xl font-black row-span-3 text-end">
+                      {Math.round(weatherData.temp_c)}°
+                    </p>
+                    <p className="text-4xl">
+                      {weatherData.text}
+                    </p>
+                    <p className="text-sm">
+                      Ощущается как {Math.round(weatherData.feelslike_c)}°
+                    </p>
+                  </div>
+                </div>
 
-      {isLoading && (
-        <l-line-spinner
-          size="60"
-          speed="1"
-          color="black"
-          className="my-12"
-        ></l-line-spinner>
-      )}
-
-      {weather && (
-        <div>
-          <div className="my-12 flex flex-col items-center">
-            <h3 className="text-2xl mb-2.5">
-              {weather.name}, {weather.country}
-            </h3>
-            <h4>Состояние погоды на данный момент:</h4>
-            <img className="w-24" src={weather.icon} />
-            <h3 className="mb-2.5">{weather.text}</h3>
-            <h2 className="text-3xl">
-              {Math.round(weather.temp_c)}
-              <sup>°</sup>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2.5 mb-5">
-            <WidgetCart
-              icon={uvIcon}
-              text="УФ"
-              value={Math.round(weather.uv)}
-              unit=""
-            />
-            <WidgetCart
-              icon={feelsLikeIcon}
-              text="ощущается как"
-              value={Math.round(weather.feelslike_c)}
-              unit="°C"
-            />
-            <WidgetCart
-              icon={humidityIcon}
-              text="влажность"
-              value={weather.humidity}
-              unit="%"
-            />
-            <WidgetCart
-              icon={windIcon}
-              text="скорость ветра"
-              value={weather.wind_kph}
-              unit="км/ч"
-            />
-            <WidgetCart
-              icon={pressureIcon}
-              text="давление"
-              value={weather.pressure_mb}
-              unit="гПа"
-            />
-            <WidgetCart
-              icon={visIcon}
-              text="видимость"
-              value={weather.vis_km}
-              unit="км"
-            />
-          </div>
-
-          <div className="flex justify-between mb-12 ">
-            {weather.forecastday.map(
-              ({
-                date,
-                day: {
-                  maxtemp_c,
-                  mintemp_c,
-                  condition: { icon },
-                },
-              }) => {
-                return (
-                  <p className="border rounded-2xl p-2.5">
-                    <p>{date}</p>
-                    <img className="mx-auto" src={icon} alt="icon" />
-                    <div>
-                      <p>
-                        <span>Мин: </span>
-                        {Math.round(mintemp_c)}
-                        <sup>°</sup>
-                      </p>
-                      <p>
-                        <span>Макс: </span>
-                        {Math.round(maxtemp_c)}
-                        <sup>°</sup>
-                      </p>
-                    </div>
-                  </p>
-                );
-              }
+                <div className="flex gap-5 mb-[60px]">
+                  <WidgetCart
+                    icon={wind}
+                    text="Ветер"
+                    value={(weatherData.wind_kph / 3.6).toFixed(1)}
+                    unit="м/с"
+                  />
+                  <WidgetCart
+                    icon={humidity}
+                    text="Влажность"
+                    value={weatherData.humidity}
+                    unit="%"
+                  />
+                  <WidgetCart
+                    icon={uv}
+                    text="УФ"
+                    value={Math.round(weatherData.uv)}
+                    unit=""
+                  />
+                  <WidgetCart
+                    icon={vis}
+                    text="Видимость"
+                    value={weatherData.vis_km}
+                    unit="км"
+                  />
+                  <WidgetCart
+                    icon={pressure}
+                    text="Давление"
+                    value={Math.round(weatherData.pressure_mb * 0.75)}
+                    unit="мм.рт.ст"
+                  />
+                </div>
+                <div className="flex mb-[60px] gap-5">
+                  <AstroCard />
+                  <ForecastCards />
+                </div>
+              </div>
             )}
           </div>
-        </div>
+          <footer className="h-[100px] w-[100vw] bg-white/20 relative">
+            <p className="absolute left-1/12 top-5">
+              Проект был выполнен в целях обучения и практики
+            </p>
+            <p className="absolute left-1/12 top-15">
+              При поддержке{' '}
+              <a
+                className="text-blue-400 underline hover:text-blue-600 transition-colors duration-500 ease-in-out"
+                href="https://www.weatherapi.com/"
+                title="Free Weather API"
+              >
+                WeatherAPI.com
+              </a>
+            </p>
+            <div className="absolute flex right-1/12 gap-x-5 top-5">
+              <a href="mailto:Alexandr.Fedorov00@gmail.com">
+                <img src="src\icons\email.png" alt="Email" />
+              </a>
+              <a href="https://github.com/Saigake">
+                <img src="src\icons\gitHub.png" alt="GitHub" />
+              </a>
+              <a href="https://t.me/Leefrute">
+                <img src="src\icons\telegram.png" alt="Telegram" />
+              </a>
+              <a href="https://wa.me/+79276886210">
+                <img src="src\icons\whatsapp.png" alt="WhatsApp" />
+              </a>
+            </div>
+          </footer>
+          <Toaster position="bottom-center" reverseOrder={false} />
+        </>
       )}
-      <Toaster position="bottom-center" reverseOrder={false} />
-    </div>
+    </>
   );
 }
 

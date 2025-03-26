@@ -1,2 +1,85 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
+@theme {
+  --color-borderLight: rgba(212, 194, 166, 1); /* для светлой темы */
+  --color-borderDark: rgba(198, 198, 198, 1); /* для темной темы */
+  --color-lightBg: #ffe9c8;
+  --color-darkBg: #242525;
+
+  --color-lightFrom: rgba(255, 255, 255, 0.4);
+  --color-lightTo: rgba(255, 233, 200, 0.1);
+  --color-darkFrom: rgba(60, 61, 61, 0.4);
+  --color-darkTo: rgba(36, 37, 37, 0.1);
+
+  --color-pBarlightDone: #d4c2a6;
+  --color-pBarDarkDone: #c6c6c6;
+
+  --color-ellipseLight: rgba(255, 241, 220, 1);
+  --color-ellipseDark: rgba(217, 217, 217, 1);
+}
+
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: var(--color-lightBg);
+}
+
+dialog#dialog {
+  background: linear-gradient(
+    rgb(255, 255, 255) 0%,
+    rgba(255, 233, 200, 0.1) 100%
+  );
+  color: black;
+}
+
+html.dark {
+  background-color: var(--color-darkBg);
+  color: white;
+}
+
+html.dark dialog#dialog {
+  background: linear-gradient(rgb(60, 61, 61) 0%, rgba(36, 37, 37, 0.1) 100%);
+  color: white;
+}
+
+html.modal-active {
+  background-color: rgba(255, 233, 200, 1);
+}
+
+html.dark.modal-active {
+  background-color: rgba(36, 37, 37, 1);
+}
+
+.theme-icon-path {
+  stroke: black;
+  fill: black;
+}
+
+html.dark .theme-icon-path {
+  stroke: white;
+  fill: white;
+}
+
+html.dark .Card {
+  background: linear-gradient(var(--color-darkFrom), var(--color-darkTo));
+}
+
+html .text {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+html.dark .text {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+html.dark .progressBar {
+  border-color: var(--color-pBarDarkDone);
+}
+
+html.dark .progressBarDone {
+  background-color: var(--color-pBarDarkDone);
+}
+
+html.dark .ellipse {
+  border-color: var(--color-pBarDarkDone);
+  background-color: var(--color-pBarDarkDone);
+}
